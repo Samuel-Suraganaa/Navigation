@@ -39,6 +39,29 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Set<Marker> _buildMarkers() {
+    return {
+      Marker(
+        markerId: const MarkerId('Central Park View'),
+        position: const LatLng(17.550452582223073, 78.1657591399883),
+        infoWindow: const InfoWindow(title: 'Central Park View'),
+        onTap: () {
+          // Handle marker tap
+        },
+      ),
+      // Marker(
+      //   markerId: const MarkerId('marker_2'),
+      //   position: const LatLng(17.546114, 78.156991),
+      //   infoWindow: const InfoWindow(title: 'Marker 2'),
+      // ),
+      // Marker(
+      //   markerId: const MarkerId('marker_3'),
+      //   position: const LatLng(17.552415, 78.168228),
+      //   infoWindow: const InfoWindow(title: 'Marker 3'),
+      // ),
+    };
+  }
+
   GoogleMap _map() {
     return GoogleMap(
       style: _mapStyle,
@@ -57,6 +80,7 @@ class _HomePageState extends State<HomePage> {
       zoomControlsEnabled: true, // enables zoom/unzoom buttons on the map
       zoomGesturesEnabled: true, // enables pinch-to-zoom gestures
       rotateGesturesEnabled: true, // or false, if you want to lock rotation
+      markers: _buildMarkers(),
     );
   }
 
