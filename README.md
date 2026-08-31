@@ -86,7 +86,3 @@ android/ ios/ web/ windows/ macos/ linux/   # Platform-specific project files
 ## Contributing
 
 Issues and pull requests are welcome. If you plan a larger change, please open an issue first to discuss what you'd like to change.
-
-## License
-
-No license has been specified yet. Consider adding one (e.g. MIT) if you intend for others to use or contribute to this project.
