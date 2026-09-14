@@ -1,7 +1,11 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
+import 'dart:math';
+import 'package:flutter_compass/flutter_compass.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -10,13 +14,24 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
+
 class _HomePageState extends State<HomePage> {
   String? _mapStyle;
-  @override
-  void initState() {
-    super.initState();
-    _loadMapStyle();
-  }
+  Position? currentPosition;
+final MapController _mapController = MapController();
+double heading = 0;
+@override
+void initState() {
+  super.initState();
+  _loadMapStyle();
+  _getCurrentLocation();
+
+  FlutterCompass.events?.listen((event) {
+    setState(() {
+      heading = event.heading ?? 0;
+    });
+  });
+}
 
   Future<void> _loadMapStyle() async {
     final style = await rootBundle.loadString('assets/maps_style.json');
@@ -24,6 +39,31 @@ class _HomePageState extends State<HomePage> {
       _mapStyle = style;
     });
   }
+  Future<void> _getCurrentLocation() async {
+  bool serviceEnabled =
+      await Geolocator.isLocationServiceEnabled();
+
+  if (!serviceEnabled) return;
+
+  LocationPermission permission =
+      await Geolocator.checkPermission();
+
+  if (permission == LocationPermission.denied) {
+    permission = await Geolocator.requestPermission();
+  }
+
+  Position position =
+      await Geolocator.getCurrentPosition();
+
+  setState(() {
+    currentPosition = position;
+  });
+
+  _mapController.move(
+    LatLng(position.latitude, position.longitude),
+    18,
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -32,58 +72,64 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          _map(),
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: LatLng(17.55050987776072, 78.16571381374303),
+              initialZoom: 15.0,
+            ),
+            children: [
+              TileLayer(
+                urlTemplate:
+                    'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=VrCsVifiD5AlRIjpOO40',
+                userAgentPackageName: 'com.example.project_1',
+              ),
+              if (currentPosition != null)
+  MarkerLayer(
+    markers: [
+  Marker(
+  point: LatLng(
+    currentPosition!.latitude,
+    currentPosition!.longitude,
+  ),
+  width: 50,
+  height: 50,
+  child: Stack(
+    alignment: Alignment.center,
+    children: [
+      Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.blue.withOpacity(0.2),
+          shape: BoxShape.circle,
+        ),
+      ),
+      Container(
+        width: 25,
+        height: 25,
+        decoration: BoxDecoration(
+          color: Colors.blue,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white,
+            width: 3,
+          ),
+        ),
+      ),
+    ],
+  ),
+),
+    ],
+  ),
+            ],
+          ),
           Positioned(top: 16, left: 16, right: 16, child: _searchField()),
         ],
       ), // Stack
     );
   }
-
-  Set<Marker> _buildMarkers() {
-    return {
-      Marker(
-        markerId: const MarkerId('Central Park View'),
-        position: const LatLng(17.550452582223073, 78.1657591399883),
-        infoWindow: const InfoWindow(title: 'Central Park View'),
-        onTap: () {
-          // Handle marker tap
-        },
-      ),
-      // Marker(
-      //   markerId: const MarkerId('marker_2'),
-      //   position: const LatLng(17.546114, 78.156991),
-      //   infoWindow: const InfoWindow(title: 'Marker 2'),
-      // ),
-      // Marker(
-      //   markerId: const MarkerId('marker_3'),
-      //   position: const LatLng(17.552415, 78.168228),
-      //   infoWindow: const InfoWindow(title: 'Marker 3'),
-      // ),
-    };
-  }
-
-  GoogleMap _map() {
-    return GoogleMap(
-      style: _mapStyle,
-      initialCameraPosition: CameraPosition(
-        target: LatLng(17.550618207669004, 78.165435851482),
-        zoom: 18,
-        bearing: 91,
-      ),
-      cameraTargetBounds: CameraTargetBounds(
-        LatLngBounds(
-          southwest: LatLng(17.546114, 78.156991),
-          northeast: LatLng(17.552415, 78.168228),
-        ),
-      ),
-      minMaxZoomPreference: const MinMaxZoomPreference(15, 20),
-      zoomControlsEnabled: true, // enables zoom/unzoom buttons on the map
-      zoomGesturesEnabled: true, // enables pinch-to-zoom gestures
-      rotateGesturesEnabled: true, // or false, if you want to lock rotation
-      markers: _buildMarkers(),
-    );
-  }
-
+  
   Container _searchField() {
     return Container(
       // margin: const EdgeInsets.only(left: 40, right: 20, top: 20),
@@ -184,3 +230,4 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+
