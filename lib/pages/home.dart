@@ -6,6 +6,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:math';
 import 'package:flutter_compass/flutter_compass.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:project_1/data/locations.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,12 +18,93 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-
+final TextEditingController _searchController =
+    TextEditingController();
 class _HomePageState extends State<HomePage> {
   String? _mapStyle;
   Position? currentPosition;
+
 final MapController _mapController = MapController();
 double heading = 0;
+  List<LatLng> routePoints = [];
+
+double distanceKm = 0;
+double durationMin = 0;
+Future<void> getRoute(
+  double destLat,
+  double destLng,
+) async {
+
+  final url =
+      "https://api.openrouteservice.org/v2/directions/foot-walking";
+
+  final response = await http.post(
+    Uri.parse(url),
+    headers: {
+      "Authorization": "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjQxYTJkOTQ3NDhmNTQ1MzViNjE2ZGQwMWNhNzE5MzEzIiwiaCI6Im11cm11cjY0In0=",
+      "Content-Type": "application/json",
+    },
+    body: jsonEncode({
+      "coordinates": [
+        [
+          currentPosition!.longitude,
+          currentPosition!.latitude
+        ],
+        [78.16452268053641, 17.549902816477566],
+        [
+          destLng,
+          destLat
+        ]
+      ]
+    }),
+  );
+
+final data = jsonDecode(response.body);
+
+if (data["routes"] == null || data["routes"].isEmpty) {
+  print(response.body);
+  return;
+}
+
+final geometry = data["routes"][0]["geometry"]; // this is an encoded polyline string
+
+final polylinePoints = PolylinePoints();
+final decoded = polylinePoints.decodePolyline(geometry);
+
+routePoints = decoded
+    .map((point) => LatLng(point.latitude, point.longitude))
+    .toList();
+
+distanceKm = data["routes"][0]["summary"]["distance"] / 1000;
+durationMin = data["routes"][0]["summary"]["duration"] / 60;
+
+  setState(() {});
+}
+Future<void> _searchLocation(String query) async {
+  final result = locations.firstWhere(
+    (location) =>
+        location["name"]
+            .toString()
+            .toLowerCase() ==
+        query.toLowerCase(),
+    orElse: () => {},
+  );
+  
+
+  if (result.isNotEmpty) {
+    _mapController.move(
+      LatLng(
+        result["latitude"] as double,
+        result["longitude"] as double,
+      ),
+      19,
+    );
+      await getRoute(
+        result["latitude"] as double,
+        result["longitude"] as double,
+      );
+  }
+}
 @override
 void initState() {
   super.initState();
@@ -75,15 +160,37 @@ void initState() {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: LatLng(17.55050987776072, 78.16571381374303),
-              initialZoom: 15.0,
+             initialCenter: LatLng(
+             17.550525, 78.165799
+             ),
+             initialZoom: 17,
+
+              minZoom: 16,
+              maxZoom: 20,
+
+              cameraConstraint: CameraConstraint.containCenter(
+                bounds: LatLngBounds(
+                  const LatLng(17.547199, 78.157142), // southwest
+                  const LatLng(17.551956, 78.169802), // northeast
+                ),
+              ),
             ),
             children: [
               TileLayer(
                 urlTemplate:
-                    'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=VrCsVifiD5AlRIjpOO40',
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.project_1',
               ),
+              if (routePoints.isNotEmpty)
+                  PolylineLayer(
+                    polylines: [
+                      Polyline(
+                        points: routePoints,
+                        strokeWidth: 5,
+                        color: Colors.blue,
+    ),
+  ],
+),
               if (currentPosition != null)
   MarkerLayer(
     markers: [
@@ -125,10 +232,27 @@ void initState() {
             ],
           ),
           Positioned(top: 16, left: 16, right: 16, child: _searchField()),
+if (routePoints.isNotEmpty)
+  Positioned(
+    bottom: 20,
+    left: 20,
+    right: 20,
+    child: Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Text(
+          "${distanceKm.toStringAsFixed(2)} km • "
+          "${durationMin.toStringAsFixed(0)} min walk",
+          textAlign: TextAlign.center,
+        ),
+      ),
+    ),
+  ),
         ],
       ), // Stack
     );
   }
+  
   
   Container _searchField() {
     return Container(
@@ -144,6 +268,8 @@ void initState() {
         ],
       ),
       child: TextField(
+        controller: _searchController,
+        onSubmitted: _searchLocation,
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
