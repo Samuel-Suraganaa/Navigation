@@ -10,7 +10,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:project_1/data/locations.dart';
-
+import 'package:project_1/screens/map_page.dart';
+import 'dart:ui';
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -23,6 +24,10 @@ final TextEditingController _searchController =
 class _HomePageState extends State<HomePage> {
   String? _mapStyle;
   Position? currentPosition;
+  int selectedIndex = 0;
+  bool isSearchOpen = false;
+final ScrollController _scrollController =
+    ScrollController();
 
 final MapController _mapController = MapController();
 double heading = 0;
@@ -111,6 +116,14 @@ void initState() {
   _loadMapStyle();
   _getCurrentLocation();
 
+_scrollController.addListener(() {
+  if (_scrollController.offset > 50) {
+    // shrink bar
+  } else {
+    // expand bar
+  }
+});
+
   FlutterCompass.events?.listen((event) {
     setState(() {
       heading = event.heading ?? 0;
@@ -149,12 +162,70 @@ void initState() {
     18,
   );
 }
+Widget _glassNavBar() {
+  return ClipRRect(
+    borderRadius: BorderRadius.circular(40),
+    child: BackdropFilter(
+      filter: ImageFilter.blur(
+        sigmaX: 5,
+        sigmaY: 5,
+      ),
+      child: Container(
+        height: 60,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(40),
+          color: Colors.green.withValues(alpha: 0.08),
+          border: Border.all(
+            color: Colors.green.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            Icon(Icons.home, size: 35),
+            Icon(Icons.explore, size: 35),
+            Icon(Icons.person, size: 35),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+Widget _searchBubble() {
+  return ClipRRect(
+    borderRadius: BorderRadius.circular(40),
+    child: BackdropFilter(
+      filter: ImageFilter.blur(
+        sigmaX: 5,
+        sigmaY: 5,
+      ),
+      child: Container(
+        width: 65,
+        height: 65,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.green.withValues(alpha: 0.08),
+          border: Border.all(
+            color: Colors.green.withValues(alpha: 0.08),
+          ),
+        ),
+        child: IconButton(
+          icon: const Icon(Icons.search, size: 32),
+          onPressed: () {
+            // open search page
+          },
+        ),
+      ),
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
+      backgroundColor: Colors.white,
       appBar: appBar(),
-      backgroundColor: Colors.black,
       body: Stack(
         children: [
           FlutterMap(
@@ -249,53 +320,95 @@ if (routePoints.isNotEmpty)
     ),
   ),
         ],
-      ), // Stack
+      ),
+ bottomNavigationBar: SizedBox(
+  height: 100,
+  child: Stack(
+    children: [
+
+      // Main Glass Navigation Bar
+      Positioned(
+        left: 16,
+        right: 90,
+        bottom: 10,
+        child: _glassNavBar(),
+      ),
+
+      // Search Bubble
+      Positioned(
+        right: 16,
+        bottom: 10,
+        child: _searchBubble(),
+      ),
+    ],
+  ),
+),
     );
   }
   
   
   Container _searchField() {
-    return Container(
-      // margin: const EdgeInsets.only(left: 40, right: 20, top: 20),
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Color(0xff1D1617).withOpacity(0.11),
-            spreadRadius: 0.0,
-            blurRadius: 40,
-            offset: const Offset(0, 3), // changes position of shadow
+  return Container(
+    margin: const EdgeInsets.symmetric(
+      horizontal: 10,
+      vertical: 10,
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(15),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: 5,
+          sigmaY: 5,
+        ),
+        child: Container(
+          height: 60,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+
+            // Apple Music style translucent glass
+            color: Colors.white.withValues(alpha: 0.08),
+
+            border: Border.all(
+              color: Colors.black.withValues(alpha: 0.08),
+              width: 1.5,
+            ),
+
+            boxShadow: [
+              BoxShadow(
+                color: Colors.green.withValues(alpha: 0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: TextField(
-        controller: _searchController,
-        onSubmitted: _searchLocation,
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 15,
-            horizontal: 20,
-          ),
-          prefixIcon: Padding(
-            padding: const EdgeInsets.all(5),
-            child: SvgPicture.asset(
-              'assets/icons/search.svg',
-              width: 12,
-              height: 12,
+
+          child: const TextField(
+            decoration: InputDecoration(
+              border: InputBorder.none,
+               contentPadding: const EdgeInsets.only(
+                    top: 15, left: 10, bottom: 15
+              ),
+              prefixIcon: Icon(
+                Icons.search,
+                color: Colors.grey,
+                size: 35,
+              ),
+              hintText: "   Search the Destination",
+              hintStyle: TextStyle(
+                color: Colors.grey,
+                fontSize: 18,
+              ),
+            ),
+            style: TextStyle(
               color: Colors.grey,
+              fontSize: 19,
             ),
           ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          hintText: 'Search the Destination',
-          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   AppBar appBar() {
     return AppBar(
