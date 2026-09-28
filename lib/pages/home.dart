@@ -14,10 +14,13 @@ import 'package:project_1/screens/map_page.dart';
 import 'dart:ui';
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
+  
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
+bool followUser = false;
+bool showSearchBar = false;
 
 final TextEditingController _searchController =
     TextEditingController();
@@ -32,6 +35,17 @@ final ScrollController _scrollController =
 final MapController _mapController = MapController();
 double heading = 0;
   List<LatLng> routePoints = [];
+  void _goToMyLocation() {
+  if (currentPosition == null) return;
+
+  _mapController.move(
+    LatLng(
+      currentPosition!.latitude,
+      currentPosition!.longitude,
+    ),
+    18.0, // zoom level
+  );
+}
 
 double distanceKm = 0;
 double durationMin = 0;
@@ -55,7 +69,6 @@ Future<void> getRoute(
           currentPosition!.longitude,
           currentPosition!.latitude
         ],
-        [78.16452268053641, 17.549902816477566],
         [
           destLng,
           destLat
@@ -110,11 +123,94 @@ Future<void> _searchLocation(String query) async {
       );
   }
 }
+PreferredSizeWidget glassAppBar() {
+  return PreferredSize(
+    preferredSize: const Size.fromHeight(90),
+    child: ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: 5,
+          sigmaY: 5,
+        ),
+        child: Container(
+          height: 90,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            color: Colors.green.withValues(alpha: 0.08),
+            border: Border(
+              bottom: BorderSide(
+                color: Colors.green.withValues(alpha: 0.15),
+              ),
+            ),
+          ),
+          child: SafeArea(
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.menu_rounded),
+                  color: const Color(0xFF007367),
+                  onPressed: () {},
+                ),
+
+                const Expanded(
+                  child: Center(
+                    child: Text(
+                      "GITAM Maps",
+                      style: TextStyle(
+                        color: Color(0xFF007367),
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  color: const Color(0xFF007367),
+                  onPressed: () {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
 @override
 void initState() {
   super.initState();
   _loadMapStyle();
   _getCurrentLocation();
+  void _goToMyLocation() {
+  if (currentPosition != null) {
+    _mapController.move(
+      LatLng(
+        currentPosition!.latitude,
+        currentPosition!.longitude,
+      ),
+      18,
+    );
+  }
+}
+  Geolocator.getPositionStream(
+  locationSettings: const LocationSettings(
+    accuracy: LocationAccuracy.best,
+  ),
+).
+listen((Position position) {
+  setState(() {
+    currentPosition = position;
+  });
+  if (followUser) {
+  _mapController.move(
+    LatLng(position.latitude, position.longitude),
+    _mapController.camera.zoom,
+  );
+}
+});
+
 
 _scrollController.addListener(() {
   if (_scrollController.offset > 50) {
@@ -162,6 +258,50 @@ _scrollController.addListener(() {
     18,
   );
 }
+Widget _navItem(
+  IconData icon,
+  String label,
+  int index,
+) {
+  bool selected = selectedIndex == index;
+
+  return AnimatedContainer(
+    duration: const Duration(milliseconds: 250),
+    padding: const EdgeInsets.symmetric(
+      horizontal: 18,
+      vertical: 6,
+    ),
+    decoration: BoxDecoration(
+      color: selected
+          ? Colors.black.withValues(alpha: 0.35)
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(30),
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          color: selected ? Colors.white : Colors.white70,
+          size: 24,
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: TextStyle(
+            color:
+                selected ? Colors.white : Colors.white70,
+            fontSize: 12,
+            fontWeight: selected
+                ? FontWeight.w600
+                : FontWeight.w400,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 Widget _glassNavBar() {
   return ClipRRect(
     borderRadius: BorderRadius.circular(40),
@@ -180,43 +320,84 @@ Widget _glassNavBar() {
           ),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            Icon(Icons.home, size: 35),
-            Icon(Icons.explore, size: 35),
-            Icon(Icons.person, size: 35),
-          ],
-        ),
+  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  children: [
+    GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedIndex = 0;
+        });
+      },
+      child: _navItem(
+        Icons.home_rounded,
+        "Home",
+        0,
+      ),
+    ),
+
+    GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedIndex = 1;
+        });
+      },
+      child: _navItem(
+        Icons.explore_rounded,
+        "Map",
+        1,
+      ),
+    ),
+
+    GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedIndex = 2;
+        });
+      },
+      child: _navItem(
+        Icons.person_rounded,
+        "Profile",
+        2,
+      ),
+    ),
+  ],
+)
       ),
     ),
   );
 }
 Widget _searchBubble() {
-  return ClipRRect(
-    borderRadius: BorderRadius.circular(40),
-    child: BackdropFilter(
-      filter: ImageFilter.blur(
-        sigmaX: 5,
-        sigmaY: 5,
+  return GestureDetector(
+  onTap: () {
+  setState(() {
+    showSearchBar = !showSearchBar;
+  });
+},
+    child: ClipRRect(
+  borderRadius: BorderRadius.circular(40),
+  child: BackdropFilter(
+    filter: ImageFilter.blur(
+      sigmaX: 5,
+      sigmaY: 5,
+    ),
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      width: 65,
+      height: 65,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.green.withValues(alpha: 0.08),
+        border: Border.all(
+          color: Colors.green.withValues(alpha: 0.18),
+        ),
       ),
-      child: Container(
-        width: 65,
-        height: 65,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.green.withValues(alpha: 0.08),
-          border: Border.all(
-            color: Colors.green.withValues(alpha: 0.08),
-          ),
-        ),
-        child: IconButton(
-          icon: const Icon(Icons.search, size: 32),
-          onPressed: () {
-            // open search page
-          },
-        ),
+      child: const Icon(
+        Icons.search,
+        color: Colors.white,
       ),
     ),
+  ),
+)
   );
 }
 
@@ -225,7 +406,8 @@ Widget _searchBubble() {
     return Scaffold(
       extendBody: true,
       backgroundColor: Colors.white,
-      appBar: appBar(),
+      extendBodyBehindAppBar: true,
+      appBar: glassAppBar(),
       body: Stack(
         children: [
           FlutterMap(
@@ -302,10 +484,103 @@ Widget _searchBubble() {
   ),
             ],
           ),
-          Positioned(top: 16, left: 16, right: 16, child: _searchField()),
+          if (showSearchBar)
+  Positioned(
+    top: 100,
+    left: 20,
+    right: 20,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(25),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 5,
+            sigmaY: 5,
+          ),
+          child: Container(
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(25),
+              border: Border.all(
+                color: Colors.black.withValues(alpha: 0.18),
+              ),
+            ),
+            child: TextField(
+              controller: _searchController,
+              style: const TextStyle(
+                color: Colors.black,
+              ),
+              onSubmitted: (value) {
+                _searchLocation(value);
+              },
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: Colors.black54,
+                ),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    setState(() {
+                      showSearchBar = false;
+                    });
+                  },
+                ),
+                hintText: "  Search for a location",
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  ),
+          
+Positioned(
+  right: 20,
+  bottom: 100,
+  child: GestureDetector(
+    onTap: _goToMyLocation,
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(15),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: 5,
+          sigmaY: 5,
+        ),
+        child: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: Colors.green.withValues(alpha: 0.18),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.green.withValues(alpha: 0.15),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.my_location,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    ),
+  ),
+),
+
 if (routePoints.isNotEmpty)
   Positioned(
-    bottom: 20,
+    bottom: 100,
     left: 20,
     right: 20,
     child: Card(
@@ -345,128 +620,6 @@ if (routePoints.isNotEmpty)
 ),
     );
   }
-  
-  
-  Container _searchField() {
-  return Container(
-    margin: const EdgeInsets.symmetric(
-      horizontal: 10,
-      vertical: 10,
-    ),
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(15),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: 5,
-          sigmaY: 5,
-        ),
-        child: Container(
-          height: 60,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(15),
-
-            // Apple Music style translucent glass
-            color: Colors.white.withValues(alpha: 0.08),
-
-            border: Border.all(
-              color: Colors.black.withValues(alpha: 0.08),
-              width: 1.5,
-            ),
-
-            boxShadow: [
-              BoxShadow(
-                color: Colors.green.withValues(alpha: 0.15),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-
-          child: const TextField(
-            decoration: InputDecoration(
-              border: InputBorder.none,
-               contentPadding: const EdgeInsets.only(
-                    top: 15, left: 10, bottom: 15
-              ),
-              prefixIcon: Icon(
-                Icons.search,
-                color: Colors.grey,
-                size: 35,
-              ),
-              hintText: "   Search the Destination",
-              hintStyle: TextStyle(
-                color: Colors.grey,
-                fontSize: 18,
-              ),
-            ),
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 19,
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-  AppBar appBar() {
-    return AppBar(
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(5),
-          bottomRight: Radius.circular(5),
-        ),
-      ),
-      title: const Text(
-        'GITAM Maps',
-        style: TextStyle(
-          color: Color.fromARGB(255, 0, 115, 103),
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-      elevation: 0.0,
-      centerTitle: true,
-      leading: GestureDetector(
-        onTap: () {
-          // Handle settings icon tap
-        },
-        child: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white,
-          ),
-          child: const Icon(
-            Icons.menu,
-            color: Color.fromARGB(255, 0, 115, 103),
-          ),
-        ),
-      ),
-      actions: [
-        GestureDetector(
-          onTap: () {
-            // Handle settings icon tap
-          },
-          child: Container(
-            margin: const EdgeInsets.all(8),
-            alignment: Alignment.center,
-            width: 27,
-            height: 37,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-            ),
-            child: SvgPicture.asset(
-              'assets/icons/settings.svg',
-              color: Color.fromARGB(255, 0, 115, 103),
-            ),
-          ),
-        ),
-      ],
-    );
+      
   }
-}
 
